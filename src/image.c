@@ -143,10 +143,10 @@ image get_label(image **characters, char *string, int size)
         ++string;
     }
 
-//    image l = characters[size][(int)*string];
-//    image n = tile_images(label, l, -size - 1 + (size+1)/2);
-//    free_image(label);
-//    label = n;
+    image l = characters[size][(int)*string];
+    image n = tile_images(label, l, -size - 1 + (size+1)/2);
+    free_image(label);
+    label = n;
     image b = border_image(label, label.h*.5);
     free_image(label);
 
@@ -243,7 +243,7 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections(image im, int num, float thresh, box *boxes, float **probs, float **masks, char **names, image **alphabet, int classes)
+void draw_detections(image im, int num, float thresh, box *boxes, float **probs, float **masks, char **names, image **alphabet, int classes)//, int demoframe)
 {
     //flip_image(im);
     int i,j, index = 0;
@@ -255,7 +255,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
             //меньше мусора
             if (probs[i][j] > 0.5){//thresh){
                 if (class < 0) {
-
+                    strcat(labelstr, " class=");
                     strcat(labelstr, names[j]);
 			  class = j;
                 } else {			  
@@ -264,15 +264,15 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
                 }
 			//вывод на консоль только 0 класс
                    if(j == 0){//(j == 0 || j == 1 || j == 2 || j == 3 || j == 5 || j == 15 || j == 16)){
-		    //strcat(labelstr, index);
-		    printf("%u", index);
-                printf("%s: %.0f%% %s\n", names[j], probs[i][j]*100);
-                    index++;
+                    //strcat(labelstr, index);
+                    //printf("%u", index);
+                    //printf("%s: %.0f%% %s\n", names[j], probs[i][j]*100);
+                    //index++;
 	         }		   
 		}
         }
 	  //работа только с классом 0
-        if((class == 0 || class == 1 || class == 2 || class == 3 || class == 5 || class == 15 || class == 16)){
+        if(class == 0 || class == 1 || class == 2 || class == 3 || class == 5 || class == 15 || class == 16){
             int width = im.h * .006;
 
             /*
@@ -310,27 +310,35 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
             int ff = (b.x-b.w/2.0 )* im.w;
                 //имя и параметры
             if (alphabet) {
-                char buffer[100];
+                char out_label[100] = {0};
+                char buffer[100] = {0};
+                char out_index[100] = {0};
                 snprintf(buffer, 10, "%d", index);
-                strcat(labelstr, " i=");
-                strcat(labelstr, buffer);
+                strcat(out_index, "id_object: ");
+                strcat(out_index, buffer);
+                strcat(out_label, "id=");
+                strcat(out_label, buffer);
+                strcat(out_label, labelstr);
                 snprintf(buffer, 10, "%d", (right+left)/2);
-                strcat(labelstr, " x=");
-                strcat(labelstr, buffer);
+                strcat(out_label, " x=");
+                strcat(out_label, buffer);
                 int yy = (top+bot)/2;
                 snprintf(buffer, 10, "%d", im.h-yy);
-                strcat(labelstr, " y=");
-                strcat(labelstr, buffer);
+                strcat(out_label, " y=");
+                strcat(out_label, buffer);
                 snprintf(buffer, 10, "%d", right-left);
-                strcat(labelstr, " w=");
-                strcat(labelstr, buffer);
+                strcat(out_label, " w=");
+                strcat(out_label, buffer);
                 snprintf(buffer, 10, "%d", bot-top);
-                strcat(labelstr, " h=");
-                strcat(labelstr, buffer);
-
-                image label = get_label(alphabet, labelstr, (im.h*.03)/11);
+                strcat(out_label, " h=");
+                strcat(out_label, buffer);
+                //labelstr содержит все данные
+                printf("%s: \n", out_label);
+                //printf("%d", demo_frame);
+                image label = get_label(alphabet, out_index, (im.h*.03)/11);
                 draw_label(im, top + width, left, label, rgb);
                 free_image(label);
+
             }
             if (masks){
                 image mask = float_to_image(14, 14, 1, masks[i]);
@@ -340,7 +348,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
                 free_image(mask);
                 free_image(resized_mask);
                 free_image(tmask);
-            }
+            }            
         }
     }
 }

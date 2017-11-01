@@ -1,4 +1,4 @@
-﻿#include "network.h"
+#include "network.h"
 #include "detection_layer.h"
 #include "region_layer.h"
 #include "cost_layer.h"
@@ -29,6 +29,8 @@ static float fps = 0;
 static float demo_thresh = 0;
 static float demo_hier = .5;
 static int running = 0;
+
+static int index_frame = 0;
 
 static int demo_frame = 3;
 static int demo_detections = 0;
@@ -63,8 +65,11 @@ void *detect_in_thread(void *ptr)
     printf("\033[1;1H");
     printf("\nFPS:%.1f\n",fps);
     printf("Objects:\n\n");
+    //комент
+    printf("\Frame: %d\n\n", index_frame);
     image display = buff[(buff_index+2) % 3];
-    draw_detections(display, demo_detections, demo_thresh, boxes, probs, 0, demo_names, demo_alphabet, demo_classes);
+    draw_detections(display, demo_detections, demo_thresh, boxes, probs, 0, demo_names, demo_alphabet, demo_classes);//, index_frame);
+
     demo_index = (demo_index + 1)%demo_frame;
     running = 0;
     return 0;
@@ -182,12 +187,12 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     }
 
     demo_time = what_time_is_it_now();
-
     while(!demo_done){
         buff_index = (buff_index + 1) %3;
         if(pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
         if(pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");
         if(!prefix){
+            index_frame++;
             fps = 1./(what_time_is_it_now() - demo_time);
             demo_time = what_time_is_it_now();
             display_in_thread(0);
