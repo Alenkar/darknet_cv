@@ -243,7 +243,7 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections(image im, int num, float thresh, box *boxes, float **probs, float **masks, char **names, image **alphabet, int classes)//, int demoframe)
+void draw_detections(image im, int num, float thresh, box *boxes, float **probs, float **masks, char **names, image **alphabet, int classes, int demoframe)
 {
     //flip_image(im);
     int i,j, index = 0;
@@ -253,7 +253,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
         int class = -1;
         for(j = 0; j < classes; ++j){
             //меньше мусора
-            if (probs[i][j] > 0.5){//thresh){
+            if (probs[i][j] > thresh){//0,5
                 if (class < 0) {
                     strcat(labelstr, " class=");
                     strcat(labelstr, names[j]);
@@ -314,6 +314,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
                 char buffer[100] = {0};
                 char out_index[100] = {0};
                 snprintf(buffer, 10, "%d", index);
+                index++;
                 strcat(out_index, "id_object: ");
                 strcat(out_index, buffer);
                 strcat(out_label, "id=");

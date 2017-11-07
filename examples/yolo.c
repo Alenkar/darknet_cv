@@ -265,6 +265,7 @@ void validate_yolo_recall(char *cfg, char *weights)
 
 void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
 {
+    int frame_index = 0;
     image **alphabet = load_alphabet();
     network *net = load_network(cfgfile, weightfile, 0);
     layer l = net->layers[net->n-1];
@@ -296,7 +297,7 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
         printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
         get_detection_boxes(l, 1, 1, thresh, probs, boxes, 0);
         if (nms) do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
-        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, 0, voc_names, alphabet, 20);
+        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, 0, voc_names, alphabet, 20, frame_index);
         save_image(im, "predictions");
         show_image(im, "predictions");
 
