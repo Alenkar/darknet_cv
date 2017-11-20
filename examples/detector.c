@@ -579,9 +579,15 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     char *input = buff;
     int j;
     float nms=.3;
+
+    //запуск данных хоть массива
+    char *filearray[] = {"data/dog.jpg", "data/eagle.jpg"};
+    int index_arr = 0;
+    //прямая загрузка из памяти здесь реализовать
+    //filename = "data/dog.jpg";
     while(1){
-        if(filename){
-            strncpy(input, filename, 256);
+        if(filearray[index_arr]){
+            strncpy(input, filearray[index_arr], 256);
         } else {
             printf("Enter Image Path: ");
             fflush(stdout);
@@ -595,6 +601,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         //image sized2 = resize_max(im, net->w);
         //image sized = crop_image(sized2, -((net->w - sized2.w)/2), -((net->h - sized2.h)/2), net->w, net->h);
         //resize_network(net, sized.w, sized.h);
+
         layer l = net->layers[net->n-1];
 
         box *boxes = calloc(l.w*l.h*l.n, sizeof(box));
@@ -625,6 +632,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
                 cvSetWindowProperty("predictions", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
             }
             show_image(im, "predictions");
+            cvResizeWindow("predictions", 900, 600);
             cvWaitKey(0);
             cvDestroyAllWindows();
 #endif
@@ -634,7 +642,12 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         free_image(sized);
         free(boxes);
         free_ptrs((void **)probs, l.w*l.h*l.n);
-        if (filename) break;
+        //if (filename) break;
+
+        printf("size of array = %d \n", sizeof filearray/sizeof *filearray);
+        printf("index = %d\n", index_arr);
+        if(index_arr==(sizeof filearray/sizeof *filearray)-1) break;
+        index_arr++;
     }
 }
 

@@ -66,8 +66,9 @@ void *detect_in_thread(void *ptr)
     printf("\nFPS:%.1f\n",fps);
     printf("Objects:\n\n");
     //комент
-    printf("\Frame: %d\n\n", index_frame);
+    printf("\Frame: %d\n", index_frame);
     image display = buff[(buff_index+2) % 3];
+    printf("\Width: %d\nHight: %d\n\n", display.w, display.h);
     draw_detections(display, demo_detections, demo_thresh, boxes, probs, 0, demo_names, demo_alphabet, demo_classes, index_frame);
 
     demo_index = (demo_index + 1)%demo_frame;
@@ -142,7 +143,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
         cap = cvCaptureFromFile(filename);
     }else{
         cap = cvCaptureFromCAM(cam_index);
-
         if(w){
             cvSetCaptureProperty(cap, CV_CAP_PROP_FRAME_WIDTH, w);
         }
@@ -153,8 +153,6 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
             cvSetCaptureProperty(cap, CV_CAP_PROP_FPS, frames);
         }
     }
-
-    if(!cap) error("Couldn't connect to webcam.\n");
 
     layer l = net->layers[net->n-1];
     demo_detections = l.n*l.w*l.h;
@@ -187,7 +185,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const ch
     }
 
     demo_time = what_time_is_it_now();
-    while(!demo_done){
+    while(!demo_done){//index_frame!=400){//demo_done){
         buff_index = (buff_index + 1) %3;
         if(pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
         if(pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");

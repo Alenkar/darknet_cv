@@ -6,10 +6,125 @@
 #include <math.h>
 #include <string.h>
 
+#include <json-c/json.h>
+#include <json/json.h>
+#include <stdio.h>
+#include <curl/curl.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
+
+
+char *Json_create(int Number_frame, int ID_object, char *Class, int X, int Y, int Width, int Hight, double Recognition_rate)
+{
+    json_object * jobj = json_object_new_object();
+
+    json_object *json_Frame = json_object_new_int(Number_frame);
+    json_object *json_ID = json_object_new_int(ID_object);
+    json_object *json_Class = json_object_new_string(Class);
+    json_object *json_X = json_object_new_int(X);
+    json_object *json_Y = json_object_new_int(Y);
+    json_object *json_Width = json_object_new_int(Width);
+    json_object *json_Hight = json_object_new_int(Hight);
+    json_object *json_Rate = json_object_new_int(Recognition_rate);
+    //Form the json objec
+    json_object_object_add(jobj, "Frame: ", json_Frame);
+    json_object_object_add(jobj, "ID: ", json_ID);
+    json_object_object_add(jobj, "Class: ", json_Class);
+    json_object_object_add(jobj, "X: ", json_X);
+    json_object_object_add(jobj, "Y: ", json_Y);
+    json_object_object_add(jobj, "Width: ", json_Width);
+    json_object_object_add(jobj, "Hight: ", json_Hight);
+    json_object_object_add(jobj, "Rate: ", json_Rate);
+
+    //Now printing the json object
+    printf ("%s\n",json_object_to_json_string(jobj));
+
+
+
+
+    char *json_string = json_object_to_json_string(jobj);
+
+
+    //Delete the json object
+    return json_string;
+}
+
+struct MemoryStruct {
+  char *memory;
+  size_t size;
+};
+
+static size_t
+WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+  size_t realsize = size * nmemb;
+  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+  mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+  if(mem->memory == NULL) {
+    /* out of memory! */
+    printf("not enough memory (realloc returned NULL)\n");
+    return 0;
+  }
+
+  memcpy(&(mem->memory[mem->size]), contents, realsize);
+  mem->size += realsize;
+  mem->memory[mem->size] = 0;
+
+  return realsize;
+}
+
+void Send_json(char *json_string)//, json_object jobj)
+{
+    struct curl_slist *chunk = NULL;
+    chunk = curl_slist_append(chunk, "Transfer-Encoding: chunked");
+    chunk = curl_slist_append(chunk, "Accept: text/plain"); // Example output easier to read as plain text.
+
+    struct curl_slist *headers=NULL; // init to NULL is important
+    headers = curl_slist_append(headers, "Accept: application/json");
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "charsets: utf-8");
+
+    CURLcode res;
+    CURL *curl = curl_easy_init();
+    if(curl) {
+
+        curl_easy_setopt(curl, CURLOPT_URL, "http://www.example.com/");
+
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_string);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcrp/0.1");
+
+        /*
+        //curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_easy_setopt(curl, CURLOPT_URL, "http://www.example.com/");
+        curl_easy_setopt(curl, CURLOPT_POST, 1);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonObj);
+        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        //curl_easy_setopt(curl, CURLOPT_HTTPGET,1);
+        //curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        //curl_easy_perform(curl);
+        */
+        res = curl_easy_perform(curl);
+/*
+        if(CURLE_OK == res) {
+            char *ct;
+            // ask for the content-type
+            res = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
+            if((CURLE_OK == res) && ct)
+                printf("We received Content-Type: %s\n", ct);
+        }
+        */
+        //json_object_put(jobj);
+     }
+}
 
 int windows = 0;
 
@@ -243,24 +358,26 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections(image im, int num, float thresh, box *boxes, float **probs, float **masks, char **names, image **alphabet, int classes, int demoframe)
+void draw_detections(image im, int num, float thresh, box *boxes, float **probs, float **masks, char **names, image **alphabet, int classes, int num_frame)
 {
     //flip_image(im);
     int i,j, index = 0;
-
+    char json_string[4096] = {0};
     for(i = 0; i < num; ++i){
         char labelstr[4096] = {0};
+        char class_name[4096] = {0};
         int class = -1;
         for(j = 0; j < classes; ++j){
             //меньше мусора
-            if (probs[i][j] > thresh){//0,5
+            if (probs[i][j] > thresh){//0.5
                 if (class < 0) {
                     strcat(labelstr, " class=");
                     strcat(labelstr, names[j]);
 			  class = j;
                 } else {			  
                     strcat(labelstr, ", ");
-                    strcat(labelstr, names[j]);			  
+                    strcat(labelstr, names[j]);
+                    strcat(class_name,names[j]);
                 }
 			//вывод на консоль только 0 класс
                    if(j == 0){//(j == 0 || j == 1 || j == 2 || j == 3 || j == 5 || j == 15 || j == 16)){
@@ -271,8 +388,8 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
 	         }		   
 		}
         }
-	  //работа только с классом 0
-        if(class == 0 || class == 1 || class == 2 || class == 3 || class == 5 || class == 15 || class == 16){
+          //работа только с определённым классом
+        if(class == 0 || class == 2 || class == 3 || class == 5 ){// || class == 5 || class == 15 || class == 16){
             int width = im.h * .006;
 
             /*
@@ -282,7 +399,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
                }
              */
 
-            //printf("%d %s: %.0f%%\n", i, names[class], prob*100);
+            //printf("%d %s: %.0f%%\n", i, names[class], probs[i][j]*100);
             int offset = class*123457 % classes;
             float red = get_color(2,offset,classes);
             float green = get_color(1,offset,classes);
@@ -315,7 +432,9 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
                 char out_index[100] = {0};
                 snprintf(buffer, 10, "%d", index);
                 index++;
-                strcat(out_index, "id_object: ");
+                int yy = (top+bot)/2;
+
+                strcat(out_index, "ID:");
                 strcat(out_index, buffer);
                 strcat(out_label, "id=");
                 strcat(out_label, buffer);
@@ -323,10 +442,11 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
                 snprintf(buffer, 10, "%d", (right+left)/2);
                 strcat(out_label, " x=");
                 strcat(out_label, buffer);
-                int yy = (top+bot)/2;
+
                 snprintf(buffer, 10, "%d", im.h-yy);
                 strcat(out_label, " y=");
                 strcat(out_label, buffer);
+                //int width = right-left;
                 snprintf(buffer, 10, "%d", right-left);
                 strcat(out_label, " w=");
                 strcat(out_label, buffer);
@@ -334,11 +454,17 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
                 strcat(out_label, " h=");
                 strcat(out_label, buffer);
                 //labelstr содержит все данные
-                printf("%s: \n", out_label);
+                //printf("%s %.0f%%\n", out_label, probs[i][j]*100);
+
                 //printf("%d", demo_frame);
                 image label = get_label(alphabet, out_index, (im.h*.03)/11);
+
                 draw_label(im, top + width, left, label, rgb);
                 free_image(label);
+                //Создание Json объекта
+
+                strcat(json_string, Json_create(num_frame, index, names[class],
+                       (right+left)/2, im.h-yy, right-left, bot-top, probs[i][j]*100));
 
             }
             if (masks){
@@ -349,9 +475,11 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
                 free_image(mask);
                 free_image(resized_mask);
                 free_image(tmask);
-            }            
-        }
+            }
+        }        
     }
+
+    //Send_json(json_string);
 }
 
 void transpose_image(image im)
